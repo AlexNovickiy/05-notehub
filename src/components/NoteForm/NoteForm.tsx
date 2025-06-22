@@ -1,13 +1,6 @@
 import css from './NoteForm.module.css';
 import type { Note, NoteTag } from '../../types/note.ts';
-import {
-  Formik,
-  Form,
-  Field,
-  type FormikHelpers,
-  useFormikContext,
-  ErrorMessage,
-} from 'formik';
+import { Formik, Form, Field, type FormikHelpers, ErrorMessage } from 'formik';
 import * as yup from 'yup';
 
 interface NoteFormProps {
@@ -41,8 +34,6 @@ const validationSchema = yup.object().shape({
 });
 
 export default function NoteForm({ onSubmit, onClose }: NoteFormProps) {
-  const formik = useFormikContext<CreateNoteFormValues>();
-
   const handleSubmit = (
     values: CreateNoteFormValues,
     actions: FormikHelpers<CreateNoteFormValues>
@@ -57,7 +48,6 @@ export default function NoteForm({ onSubmit, onClose }: NoteFormProps) {
   };
 
   const handleCancelClick = () => {
-    formik.resetForm();
     onClose();
   };
 
