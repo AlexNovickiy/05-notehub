@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { Note } from '../types/note';
 
 const API_KEY = import.meta.env.VITE_NOTEHUB_TOKEN;
-const BASE_URL = 'https://notehub-public.goit.study';
+const BASE_URL = 'https://notehub-public.goit.study/api';
 const NOTES_URL = `${BASE_URL}/notes`;
 
 interface FetchNotesResponse {
@@ -10,16 +10,27 @@ interface FetchNotesResponse {
   totalPages: number;
 }
 
+interface Params {
+  page: number;
+  perPage: number;
+  search?: string;
+}
+
 export async function fetchNotes(
   page: number = 1,
   searchValue: string = ''
 ): Promise<FetchNotesResponse> {
+  const params: Params = {
+    page,
+    perPage: 12,
+  };
+
+  if (searchValue) {
+    params.search = searchValue;
+  }
+
   const response = await axios.get<FetchNotesResponse>(`${NOTES_URL}`, {
-    params: {
-      page,
-      search: searchValue,
-      perPage: 12,
-    },
+    params,
     headers: {
       Authorization: `Bearer ${API_KEY}`,
     },

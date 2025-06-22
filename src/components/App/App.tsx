@@ -2,14 +2,15 @@
 
 import css from './App.module.css';
 import toast, { Toaster } from 'react-hot-toast';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { Note } from '../../types/note.ts';
+import { useMutation } from '@tanstack/react-query';
+import { useDebounce } from 'use-debounce';
 
 import Loader from '../Loader/Loader.tsx';
 import ErrorMessage from '../ErrorMessage/ErrorMessage.tsx';
 import SearchBox from '../SearchBox/SearchBox.tsx';
 import Pagination from '../Pagination/Pagination.tsx';
-import NoteForm from '../NoteForm/NoteForm.tsx';
 import NoteList from '../NoteList/NoteList.tsx';
 import NoteModal from '../NoteModal/NoteModal.tsx';
 
@@ -18,29 +19,56 @@ import {
   createNote,
   deleteNote,
 } from '../../services/noteService.ts';
-import ReactPaginate from 'react-paginate';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+
+import {
+  useQuery,
+  keepPreviousData,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 export default function App() {
   const [isClickedCreateNote, setIsClickedCreateNote] =
     useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
+  const [debouncedSearchValue] = useDebounce(searchValue, 1000);
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  const { data, isLoading, isError, isSuccess } = useQuery({
-    queryKey: ['notes', searchValue, currentPage],
-    queryFn: () => fetchNotes(currentPage, searchValue),
+  const queryClient = useQueryClient();
+
+  const { data, isFetching, isError, isSuccess } = useQuery({
+    queryKey: ['notes', debouncedSearchValue, currentPage],
+    queryFn: () => fetchNotes(currentPage, debouncedSearchValue),
     placeholderData: keepPreviousData,
   });
 
-  useEffect(() => {
-    if (data?.notes.length === 0 && isSuccess) {
-      toast.error('No notes found for your request.');
+  const createMutation = useMutation({
+    mutationFn: createNote,
+    onSuccess: () => {
+      toast.success('Note created successfully!');
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+  });
+
+  const handleCreateNote = (note: Note) => {
+    createMutation.mutate(note);
+    setIsClickedCreateNote(false);
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteNote,
+    onSuccess: () => {
+      toast.success('Note deleted successfully!');
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+  });
+
+  const handleDeleteNote = (id: number | undefined) => {
+    if (id) {
+      deleteMutation.mutate(id);
+    } else {
+      toast.error('Note ID is required for deletion.');
     }
-    if (isError) {
-      toast.error('An error occurred while fetching notes.');
-    }
-  }, [data, isSuccess, isError]);
+  };
 
   const handleSearch = async (searchValue: string) => {
     setSearchValue(searchValue);
@@ -59,7 +87,7 @@ export default function App() {
     <div className={css.app}>
       <Toaster position="top-center" reverseOrder={true} />
       <header className={css.toolbar}>
-        <SearchBox onSubmit={handleSearch} />
+        <SearchBox onChange={handleSearch} />
         {data && data.totalPages > 1 && (
           <Pagination
             currentPage={currentPage}
@@ -67,12 +95,18 @@ export default function App() {
             onPageChange={setCurrentPage}
           />
         )}
-        <button onClick={handleOpenModal}>Create Note +</button>
+        <button className={css.button} onClick={handleOpenModal}>
+          Create Note +
+        </button>
       </header>
-      {isLoading && <Loader />}
+      {isFetching && <Loader />}
       {isError && <ErrorMessage />}
-      {data && data.notes.length > 0 && <NoteList notes={data.notes} />}
-      {isClickedCreateNote && <NoteModal onClose={handleCloseModal} />}
+      {data && isSuccess && data.notes.length > 0 && (
+        <NoteList notes={data.notes} onDelete={handleDeleteNote} />
+      )}
+      {isClickedCreateNote && (
+        <NoteModal onSubmit={handleCreateNote} onClose={handleCloseModal} />
+      )}
     </div>
   );
 }
