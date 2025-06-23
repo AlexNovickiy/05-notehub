@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Note } from '../types/note';
+import type { Note, CreateNote } from '../types/note';
 
 const API_KEY = import.meta.env.VITE_NOTEHUB_TOKEN;
 const BASE_URL = 'https://notehub-public.goit.study/api';
@@ -18,11 +18,12 @@ interface Params {
 
 export async function fetchNotes(
   page: number = 1,
-  searchValue: string = ''
+  searchValue: string = '',
+  perPage: number = 12
 ): Promise<FetchNotesResponse> {
   const params: Params = {
     page,
-    perPage: 12,
+    perPage,
   };
 
   if (searchValue) {
@@ -38,7 +39,7 @@ export async function fetchNotes(
   return response.data;
 }
 
-export async function createNote(note: Note): Promise<Note> {
+export async function createNote(note: CreateNote): Promise<Note> {
   const response = await axios.post<Note>(`${NOTES_URL}`, note, {
     headers: {
       Authorization: `Bearer ${API_KEY}`,
